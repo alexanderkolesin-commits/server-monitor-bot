@@ -5,4 +5,13 @@
       ansible.builtin.file:
         path: /home/alex/server-monitor-bot-deployed
         state: directory
-        
+    - name: Создать каталог для скриптов
+      ansible.builtin.file:
+        path: /home/alex/server-monitor-bot-deployed/scripts
+        state: directory
+    - name: Скопировать скрипт состояния сервера
+      ansible.builtin.copy:
+        src: ../scripts/status.sh
+        dest: /home/alex/server-monitor-bot-deployed/scripts/status.sh
+        mode: '0755'
+                    
