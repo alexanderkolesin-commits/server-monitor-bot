@@ -1,0 +1,14 @@
+# Файлы с секретами
+.env
+.env.*
+
+# Виртуальное окружение Python
+.venv/
+venv/
+
+# Кэш Python
+__pycache__/
+*.pyc
+
+# Временные файлы Ansible
+*.retry

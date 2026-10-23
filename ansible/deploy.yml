@@ -1,0 +1,8 @@
+- name: Развертывание серверного бота
+  hosts: bot_servers
+  tasks:
+    - name: Создать каталог для развёртывания бота
+      ansible.builtin.file:
+        path: /home/alex/server-monitor-bot-deployed
+        state: directory
+        
