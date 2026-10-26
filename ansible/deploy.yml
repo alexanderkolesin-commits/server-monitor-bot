@@ -14,4 +14,9 @@
         src: ../scripts/status.sh
         dest: /home/alex/server-monitor-bot-deployed/scripts/status.sh
         mode: '0755'
+    - name: Скопировать программу запуска скрипта
+      ansible.builtin.copy:
+        src: ../run_status.py
+        dest: /home/alex/server-monitor-bot-deployed/run_status.py
+        mode: '0644'    
                     
