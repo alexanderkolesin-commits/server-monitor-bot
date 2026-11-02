@@ -1,0 +1,15 @@
+[Unit]
+Description=Server monitoring Telegram bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=alex
+WorkingDirectory=/home/alex/server-monitor-bot-deployed
+ExecStart=/home/alex/server-monitor-bot-deployed/.venv/bin/python /home/alex/server-monitor-bot-deployed/bot.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
