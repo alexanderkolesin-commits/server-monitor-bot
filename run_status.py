@@ -1,10 +1,17 @@
 import subprocess
-from pathlib import Path
 
 def get_status():
-    base_dir = Path(__file__).resolve().parent
-    script_path = base_dir / "scripts" / "status.sh"
-    res = subprocess.run(["bash", script_path], capture_output=True, text=True)
+    cmd = [
+        "ssh",
+        "-i", "/run/ssh-key",
+        "-o", "UserKnownHostsFile=/run/known_hosts",
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", "IdentitiesOnly=yes",
+        "-o", "BatchMode=yes",
+        "alex@192.168.7.131", 
+        "bash /home/alex/server-monitor-bot-deployed/scripts/status.sh"
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode == 0:
         return res.stdout
 
