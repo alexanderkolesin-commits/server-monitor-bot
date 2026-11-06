@@ -1,10 +1,13 @@
 - name: Развертывание серверного бота
   hosts: bot_servers
   tasks:
-    - name: Установить поддержку виртуальных окружений Python
+    - name: Установить Docker и компоненты сборки и запуска
       become: true
       ansible.builtin.apt:
-        name: python3-venv
+        name:
+          - docker.io
+          - docker-compose-v2
+          - docker-buildx
         state: present
         update_cache: true
         cache_valid_time: 3600
@@ -16,6 +19,22 @@
       ansible.builtin.file:
         path: /home/alex/server-monitor-bot-deployed/scripts
         state: directory
+    - name: Создать каталог для SSH-файлов бота
+      ansible.builtin.file:
+        path: /home/alex/server-monitor-bot-deployed/ssh
+        state: directory
+        mode: '0700'
+    - name: Скопировать SSH-ключ бота
+      ansible.builtin.copy:
+        src: /home/alexandr/.ssh/server-monitor-bot
+        dest: /home/alex/server-monitor-bot-deployed/ssh/id_ed25519
+        mode: '0600'
+      no_log: true
+    - name: Скопировать известные ключи серверов
+      ansible.builtin.copy:
+        src: /home/alexandr/.ssh/known_hosts
+        dest: /home/alex/server-monitor-bot-deployed/ssh/known_hosts
+        mode: '0644'          
     - name: Скопировать скрипт состояния сервера
       ansible.builtin.copy:
         src: ../scripts/status.sh
@@ -25,52 +44,62 @@
       ansible.builtin.copy:
         src: ../run_status.py
         dest: /home/alex/server-monitor-bot-deployed/run_status.py
-        mode: '0644'
-      notify: Перезапустить бота   
+        mode: '0644'   
     - name: Скопировать bot.py
       ansible.builtin.copy:    
         src: ../bot.py
         dest: /home/alex/server-monitor-bot-deployed/bot.py
-        mode: '0644'
-      notify: Перезапустить бота           
+        mode: '0644'          
     - name: Скопировать requirements.txt
       ansible.builtin.copy:
         src: ../requirements.txt
         dest: /home/alex/server-monitor-bot-deployed/requirements.txt
         mode: '0644'
-    - name: Создать виртуальное окружение бота
-      ansible.builtin.command:
-        cmd: python3 -m venv /home/alex/server-monitor-bot-deployed/.venv
-        creates: /home/alex/server-monitor-bot-deployed/.venv/bin/python
-    - name: Установить зависимости бота
-      ansible.builtin.pip:
-        requirements: /home/alex/server-monitor-bot-deployed/requirements.txt
-        executable: /home/alex/server-monitor-bot-deployed/.venv/bin/pip
-      notify: Перезапустить бота   
+    - name: Скопировать Dockerfile
+      ansible.builtin.copy:
+        src: ../Dockerfile
+        dest: /home/alex/server-monitor-bot-deployed/Dockerfile
+        mode: '0644'
+    - name: Скопировать .dockerignore
+      ansible.builtin.copy:
+        src: ../.dockerignore
+        dest: /home/alex/server-monitor-bot-deployed/.dockerignore
+        mode: '0644'
+    - name: Скопировать конфигурацию Compose
+      ansible.builtin.copy:
+        src: ../compose.yaml
+        dest: /home/alex/server-monitor-bot-deployed/compose.yaml
+        mode: '0644'              
     - name: Скопировать .env
       ansible.builtin.copy:
         src: ../.env
         dest: /home/alex/server-monitor-bot-deployed/.env
         mode: '0600'
       no_log: true
-      notify: Перезапустить бота 
-    - name: Скопировать server-monitor-bot.service
-      ansible.builtin.copy:
-        src: server-monitor-bot.service
-        dest: /etc/systemd/system/server-monitor-bot.service
-        mode: '0644'
-      become: True
-      notify: Перезапустить бота     
-    - name: Включить и запустить службу бота
+    - name: Остановить старую службу бота и отключить её автозапуск
+      become: true
       ansible.builtin.systemd_service:
         name: server-monitor-bot.service
-        daemon_reload: true
+        enabled: false
+        state: stopped
+    - name: Включить и запустить Docker
+      become: true
+      ansible.builtin.systemd_service:
+        name: docker.service
         enabled: true
         state: started
+    - name: Собрать образ и запустить бота через Compose
       become: true
-  handlers:
-    - name: Перезапустить бота
-      become: true
-      ansible.builtin.systemd_service:
-        name: server-monitor-bot.service
-        state: restarted 
+      environment:
+        BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
+      community.docker.docker_compose_v2:
+        project_src: /home/alex/server-monitor-bot-deployed
+        build: always
+        pull: never
+        state: present
+      register: compose_result
+    - name: Показать действия Compose
+      ansible.builtin.debug:
+        var: compose_result.actions
+                  
+

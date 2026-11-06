@@ -1,0 +1,16 @@
+services:
+  bot:
+    image: server-monitor-bot:v3
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - type: bind
+        source: ./ssh/id_ed25519
+        target: /run/ssh-key
+        read_only: true
+      - type: bind
+        source: ./ssh/known_hosts
+        target: /run/known_hosts
+        read_only: true 
