@@ -1,7 +1,6 @@
 services:
   bot:
-    image: server-monitor-bot:v3
-    build: .
+    image: akolesin/server-monitor-bot:v4
     restart: unless-stopped
     env_file:
       - .env
