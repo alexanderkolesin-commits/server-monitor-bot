@@ -62,16 +62,95 @@
         name: docker.service
         enabled: true
         state: started
-    - name: Скачать образ и запустить бота через Compose
+    - name: Скопировать манифест namespace    
+      ansible.builtin.copy:
+        src: ../k8s/namespace.yaml
+        dest: /home/alex/server-monitor-bot-deployed/namespace.yaml
+        mode: '0644'
+    - name: Создать namespace бота
       become: true
-      community.docker.docker_compose_v2:
-        project_src: /home/alex/server-monitor-bot-deployed
-        build: never
-        pull: always
-        state: present
-      register: compose_result
-    - name: Показать действия Compose
-      ansible.builtin.debug:
-        var: compose_result.actions
-                  
+      ansible.builtin.command:
+        argv:
+        - /usr/local/bin/kubectl
+        - apply
+        - -f 
+        - /home/alex/server-monitor-bot-deployed/namespace.yaml
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout or 'configured' in namespace_result.stdout"
+    - name: Подготовить Secret с переменными бота
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - -n 
+          - server-monitor
+          - create 
+          - secret
+          - generic
+          - bot-env
+          - --from-env-file=/home/alex/server-monitor-bot-deployed/.env
+          - --dry-run=client
+          - -o 
+          - yaml
+      register: bot_env_manifest
+      changed_when: false
+      no_log: true
+    - name: Применить Secret с переменными бота
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - apply
+          - -f 
+          - "-"
+        stdin: "{{ bot_env_manifest.stdout }}"
+      register: bot_env_result
+      changed_when: "'created' in bot_env_result.stdout or 'configured' in bot_env_result.stdout"
+      no_log: true
+    - name: Подготовить Secret с SSH-файлами бота
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - -n
+          - server-monitor
+          - create
+          - secret
+          - generic
+          - bot-ssh
+          - --from-file=id_ed25519=/home/alex/server-monitor-bot-deployed/ssh/id_ed25519
+          - --from-file=known_hosts=/home/alex/server-monitor-bot-deployed/ssh/known_hosts
+          - --dry-run=client
+          - -o
+          - yaml
+      register: bot_ssh_manifest
+      changed_when: false
+      no_log: true
+    - name: Применить Secret с SSH-файлами бота
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - apply
+          - -f 
+          - "-"
+        stdin: "{{ bot_ssh_manifest.stdout }}"
+      register: bot_ssh_result
+      changed_when: "'created' in bot_ssh_result.stdout or 'configured' in bot_ssh_result.stdout"
+      no_log: true                         
+    - name: Скопировать манифест Kubernetes
+      ansible.builtin.copy:
+        src: ../k8s/deployment.yaml
+        dest: /home/alex/server-monitor-bot-deployed/deployment.yaml
+        mode: '0644'
+    - name: Применить манифест бота
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - apply
+          - -f    
+          - /home/alex/server-monitor-bot-deployed/deployment.yaml
+      register: deployment_result
+      changed_when: "'created' in deployment_result.stdout or 'configured' in deployment_result.stdout"            
 

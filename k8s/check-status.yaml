@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: chek-status
+  namespace: server-monitor
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: akolesin/server-monitor-bot:v4
+      command: ["python", "run_status.py"]
+      volumeMounts:
+        - name: ssh
+          mountPath: /run/ssh-key
+          subPath: id_ed25519
+          readOnly: true
+        - name: ssh
+          mountPath: /run/known_hosts
+          subPath: known_hosts
+          readOnly: true
+  volumes:
+    - name: ssh
+      secret:
+        secretName: bot-ssh
+        defaultMode: 0400    
+
+       
